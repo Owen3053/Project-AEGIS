@@ -17,3 +17,16 @@ __pycache__/
 # OS Files
 Thumbs.db
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# AEGIS local memory database
+memory/*.db
+
+# Environment variables
+.env
