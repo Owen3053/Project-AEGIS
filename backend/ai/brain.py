@@ -2,18 +2,24 @@ import ollama
 
 from backend.core.router import CommandRouter
 from backend.core.executor import CommandExecutor
-from backend.memory.memory_manager import MemoryManager
+from backend.memory.memory_service import MemoryService
 from backend.memory.memory_detector import MemoryDetector
 
 
 class AegisBrain:
 
     def __init__(self):
+
         self.model = "qwen3:8b"
 
         self.router = CommandRouter()
-        self.executor = CommandExecutor()
-        self.memory = MemoryManager()
+
+        # One central memory service
+        self.memory = MemoryService()
+
+        # Executor uses the same memory service
+        self.executor = CommandExecutor(self.memory)
+
         self.detector = MemoryDetector()
 
         self.messages = [
@@ -28,20 +34,26 @@ class AegisBrain:
             }
         ]
 
+    # ==========================================
+    # AUTOMATIC MEMORY DETECTION
+    # ==========================================
+
     def handle_memory_detection(self, message):
 
         result = self.detector.detect(message)
 
         if not result["should_remember"]:
-            return False
+            return
 
         memory = result["memory"].strip()
 
         if not memory:
-            return False
+            return
 
         print()
-        print("AEGIS: I noticed this may be useful to remember:")
+        print(
+            "AEGIS: I noticed this may be useful to remember:"
+        )
         print()
         print(f'  "{memory}"')
         print()
@@ -55,34 +67,53 @@ class AegisBrain:
             saved = self.memory.remember(memory)
 
             if saved:
-                print("AEGIS: Got it. I'll remember that.")
+                print(
+                    "AEGIS: Got it. I'll remember that."
+                )
             else:
-                print("AEGIS: I already had that memory.")
+                print(
+                    "AEGIS: I already had that memory."
+                )
 
         else:
-            print("AEGIS: Okay, I won't save it.")
+
+            print(
+                "AEGIS: Okay, I won't save it."
+            )
 
         print()
 
-        return True
+    # ==========================================
+    # THINK
+    # ==========================================
 
     def think(self, message):
 
         command = self.router.route(message)
 
-        # Handle explicit commands first
+        # --------------------------------------
+        # Explicit commands
+        # --------------------------------------
+
         if command["type"] != "chat":
             return self.executor.execute(command)
 
-        # Automatically detect useful memories
+        # --------------------------------------
+        # Automatic memory detection
+        # --------------------------------------
+
         self.handle_memory_detection(message)
 
-        # Search relevant memories
-        memories = self.memory.search(message)
+        # --------------------------------------
+        # Relevant memory retrieval
+        # --------------------------------------
+
+        memories = self.memory.recall(message)
 
         memory_context = ""
 
         if memories:
+
             memory_context = (
                 "\n\nRELEVANT USER MEMORIES:\n"
                 + "\n".join(
@@ -91,7 +122,13 @@ class AegisBrain:
                 )
             )
 
-        enhanced_message = message + memory_context
+        # --------------------------------------
+        # AI conversation
+        # --------------------------------------
+
+        enhanced_message = (
+            message + memory_context
+        )
 
         self.messages.append(
             {
@@ -116,6 +153,18 @@ class AegisBrain:
 
         return answer
 
+    # ==========================================
+    # CLOSE
+    # ==========================================
+
+    def close(self):
+
+        self.memory.close()
+
+
+# ==============================================
+# MAIN
+# ==============================================
 
 def main():
 
@@ -123,40 +172,54 @@ def main():
 
     print("=" * 50)
     print("             PROJECT AEGIS")
-    print("             AI Assistant v0.7.1")
+    print("             AI Assistant v0.8.0")
     print("=" * 50)
 
     print("AEGIS is online.")
     print("Type 'exit' or 'quit' to shut down.")
     print()
 
-    while True:
+    try:
 
-        try:
-            user_input = input("You: ").strip()
+        while True:
 
-        except KeyboardInterrupt:
-            print("\nAEGIS: Shutting down. Goodbye.")
-            break
+            try:
+                user_input = input("You: ").strip()
 
-        if user_input.lower() in ["exit", "quit"]:
-            print("\nAEGIS: Shutting down. Goodbye.")
-            break
+            except KeyboardInterrupt:
 
-        if not user_input:
-            continue
+                print(
+                    "\nAEGIS: Shutting down. Goodbye."
+                )
+                break
 
-        try:
-            answer = brain.think(user_input)
+            if user_input.lower() in ["exit", "quit"]:
 
-            print()
-            print("AEGIS:", answer)
-            print()
+                print(
+                    "\nAEGIS: Shutting down. Goodbye."
+                )
+                break
 
-        except Exception as error:
-            print()
-            print("AEGIS ERROR:", error)
-            print()
+            if not user_input:
+                continue
+
+            try:
+
+                answer = brain.think(user_input)
+
+                print()
+                print("AEGIS:", answer)
+                print()
+
+            except Exception as error:
+
+                print()
+                print("AEGIS ERROR:", error)
+                print()
+
+    finally:
+
+        brain.close()
 
 
 if __name__ == "__main__":

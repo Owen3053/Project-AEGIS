@@ -1,12 +1,10 @@
-class CommandRouter:
+﻿class CommandRouter:
 
     def route(self, message):
 
         text = message.lower().strip()
 
-        # ==========================================
         # MEMORY COMMANDS
-        # ==========================================
 
         if text.startswith("remember that "):
 
@@ -43,9 +41,7 @@ class CommandRouter:
                 "data": None
             }
 
-        # ==========================================
         # AUTOMATION COMMANDS
-        # ==========================================
 
         if text.startswith("open "):
 
@@ -55,9 +51,7 @@ class CommandRouter:
                 "data": message[len("open "):].strip()
             }
 
-        # ==========================================
         # TOOL COMMANDS
-        # ==========================================
 
         if text.startswith("search "):
 
@@ -67,9 +61,7 @@ class CommandRouter:
                 "data": message[len("search "):].strip()
             }
 
-        # ==========================================
         # NORMAL CHAT
-        # ==========================================
 
         return {
             "type": "chat",
@@ -95,7 +87,6 @@ if __name__ == "__main__":
     ]
 
     for test in tests:
-
         print(f"{test} ->")
         print(router.route(test))
         print()

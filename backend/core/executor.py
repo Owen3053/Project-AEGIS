@@ -1,11 +1,13 @@
 from backend.automation.automation_manager import AutomationManager
+from backend.tools.search_tool import SearchTool
 
 
 class CommandExecutor:
 
-    def __init__(self, memory_service=None):
+    def __init__(self, memory_service):
 
         self.automation = AutomationManager()
+        self.search = SearchTool()
         self.memory = memory_service
 
     def execute(self, command):
@@ -19,9 +21,6 @@ class CommandExecutor:
         # ==========================================
 
         if command_type == "memory":
-
-            if self.memory is None:
-                return "Memory service is not available."
 
             if action == "remember":
 
@@ -57,7 +56,8 @@ class CommandExecutor:
                 if deleted:
                     return (
                         f"I've forgotten {deleted} "
-                        f"memory item(s) matching '{data}'."
+                        f"memory item(s) matching "
+                        f"'{data}'."
                     )
 
                 return (
@@ -86,9 +86,9 @@ class CommandExecutor:
 
             if action == "search":
 
-                return (
-                    f"Search tool is not implemented yet: "
-                    f"{data}"
-                )
+                if not data:
+                    return "What would you like me to search for?"
+
+                return self.search.search(data)
 
         return "I don't know how to execute that command."
