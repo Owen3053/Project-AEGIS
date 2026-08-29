@@ -84,11 +84,48 @@ class CommandExecutor:
 
         if command_type == "tool":
 
-            if action == "search":
+            if not action:
+                return "Which tool should I use?"
 
-                return self.tools.execute(
-                    "search",
-                    data
-                )
+            return self.tools.execute(action, data)
+
+        # ==========================================
+        # UNKNOWN COMMAND
+        # ==========================================
 
         return "I don't know how to execute that command."
+
+
+if __name__ == "__main__":
+
+    from backend.memory.memory_service import MemoryService
+
+    executor = CommandExecutor(MemoryService())
+
+    tests = [
+
+        {
+            "type": "tool",
+            "action": "calculator",
+            "data": "25 * 4"
+        },
+
+        {
+            "type": "tool",
+            "action": "search",
+            "data": "AEGIS AI assistant"
+        },
+
+        {
+            "type": "tool",
+            "action": "unknown",
+            "data": "test"
+        }
+
+    ]
+
+    for test in tests:
+
+        print(test)
+        print(executor.execute(test))
+        print()

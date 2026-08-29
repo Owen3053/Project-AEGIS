@@ -117,6 +117,28 @@ class CommandRouter:
                     }
 
         # ==========================================
+        # CALCULATOR
+        # ==========================================
+
+        calculate_triggers = [
+            "calculate ",
+            "what is ",
+            "compute ",
+        ]
+
+        for trigger in calculate_triggers:
+
+            if text.startswith(trigger):
+
+                expression = message[len(trigger):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "calculator",
+                    "data": expression
+                }
+
+        # ==========================================
         # SEARCH
         # ==========================================
 
@@ -194,6 +216,11 @@ if __name__ == "__main__":
         "can you open calculator",
         "could you open youtube",
         "please launch chrome",
+
+        # Calculator
+        "calculate 25 * 4",
+        "what is 100 + 50",
+        "compute (20 + 10) * 3",
 
         # Search
         "search Python tutorials",

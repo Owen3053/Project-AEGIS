@@ -1,4 +1,5 @@
 from backend.tools.search_tool import SearchTool
+from backend.tools.calculator_tool import CalculatorTool
 
 
 class ToolManager:
@@ -6,17 +7,9 @@ class ToolManager:
     def __init__(self):
 
         self.tools = {
-            "search": SearchTool()
+            "search": SearchTool(),
+            "calculator": CalculatorTool(),
         }
-
-    def execute(self, tool_name, data):
-
-        tool = self.tools.get(tool_name)
-
-        if not tool:
-            return f"I don't know how to use the '{tool_name}' tool."
-
-        return tool.execute(data)
 
     def list_tools(self):
 
@@ -24,3 +17,14 @@ class ToolManager:
             name: tool.description
             for name, tool in self.tools.items()
         }
+
+    def has_tool(self, name):
+
+        return name in self.tools
+
+    def execute(self, name, data):
+
+        if name not in self.tools:
+            return f"I don't have a '{name}' tool yet."
+
+        return self.tools[name].execute(data)
