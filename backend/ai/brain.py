@@ -1,94 +1,102 @@
 import ollama
+
+from backend.core.router import CommandRouter
+from backend.core.executor import CommandExecutor
 from backend.memory.memory_manager import MemoryManager
+from backend.memory.memory_detector import MemoryDetector
 
 
 class AegisBrain:
 
     def __init__(self):
         self.model = "qwen3:8b"
+
+        self.router = CommandRouter()
+        self.executor = CommandExecutor()
         self.memory = MemoryManager()
+        self.detector = MemoryDetector()
 
         self.messages = [
             {
                 "role": "system",
                 "content": (
                     "You are AEGIS, a personal AI assistant. "
-                    "You are intelligent, helpful, calm, concise, "
-                    "and proactive. "
-                    "You assist the user with learning, programming, "
-                    "research, planning, and everyday tasks."
+                    "Be helpful, concise, and accurate. "
+                    "Use relevant stored memories when answering. "
+                    "Never invent memories."
                 )
             }
         ]
 
+    def handle_memory_detection(self, message):
+
+        result = self.detector.detect(message)
+
+        if not result["should_remember"]:
+            return False
+
+        memory = result["memory"].strip()
+
+        if not memory:
+            return False
+
+        print()
+        print("AEGIS: I noticed this may be useful to remember:")
+        print()
+        print(f'  "{memory}"')
+        print()
+
+        confirmation = input(
+            "AEGIS: Should I remember this? (yes/no): "
+        ).strip().lower()
+
+        if confirmation in ["yes", "y"]:
+
+            saved = self.memory.remember(memory)
+
+            if saved:
+                print("AEGIS: Got it. I'll remember that.")
+            else:
+                print("AEGIS: I already had that memory.")
+
+        else:
+            print("AEGIS: Okay, I won't save it.")
+
+        print()
+
+        return True
+
     def think(self, message):
 
-        text = message.lower().strip()
+        command = self.router.route(message)
 
-        # ==========================================
-        # REMEMBER COMMAND
-        # ==========================================
+        # Handle explicit commands first
+        if command["type"] != "chat":
+            return self.executor.execute(command)
 
-        if text.startswith("remember that "):
+        # Automatically detect useful memories
+        self.handle_memory_detection(message)
 
-            memory = message[len("remember that "):].strip()
+        # Search relevant memories
+        memories = self.memory.search(message)
 
-            if memory:
-                self.memory.remember(memory)
+        memory_context = ""
 
-                return f"I'll remember that: {memory}"
-
-            return "What would you like me to remember?"
-
-        # ==========================================
-        # RECALL COMMAND
-        # ==========================================
-
-        if text in [
-            "what do you remember about me?",
-            "what do you remember?",
-            "show my memories"
-        ]:
-
-            memories = self.memory.get_memories()
-
-            if not memories:
-                return "I don't have any saved memories yet."
-
-            return "Here's what I remember:\n- " + "\n- ".join(memories)
-
-        # ==========================================
-        # FORGET COMMAND
-        # ==========================================
-
-        if text.startswith("forget "):
-
-            keyword = message[7:].strip()
-
-            if not keyword:
-                return "What would you like me to forget?"
-
-            deleted = self.memory.forget(keyword)
-
-            if deleted:
-                return (
-                    f"I've forgotten {deleted} memory "
-                    f"item(s) matching '{keyword}'."
+        if memories:
+            memory_context = (
+                "\n\nRELEVANT USER MEMORIES:\n"
+                + "\n".join(
+                    "- " + memory
+                    for memory in memories
                 )
-
-            return (
-                f"I couldn't find any memory matching "
-                f"'{keyword}'."
             )
 
-        # ==========================================
-        # NORMAL AI CONVERSATION
-        # ==========================================
+        enhanced_message = message + memory_context
 
         self.messages.append(
             {
                 "role": "user",
-                "content": message
+                "content": enhanced_message
             }
         )
 
@@ -114,27 +122,41 @@ def main():
     brain = AegisBrain()
 
     print("=" * 50)
-    print("        PROJECT AEGIS")
-    print("        AI Assistant v0.1")
+    print("             PROJECT AEGIS")
+    print("             AI Assistant v0.7.1")
     print("=" * 50)
+
     print("AEGIS is online.")
-    print("Type 'exit' to shut down.\n")
+    print("Type 'exit' or 'quit' to shut down.")
+    print()
 
     while True:
 
-        user_input = input("You: ")
+        try:
+            user_input = input("You: ").strip()
 
-        if user_input.lower() in ["exit", "quit"]:
-
+        except KeyboardInterrupt:
             print("\nAEGIS: Shutting down. Goodbye.")
             break
 
-        if not user_input.strip():
+        if user_input.lower() in ["exit", "quit"]:
+            print("\nAEGIS: Shutting down. Goodbye.")
+            break
+
+        if not user_input:
             continue
 
-        answer = brain.think(user_input)
+        try:
+            answer = brain.think(user_input)
 
-        print(f"\nAEGIS: {answer}\n")
+            print()
+            print("AEGIS:", answer)
+            print()
+
+        except Exception as error:
+            print()
+            print("AEGIS ERROR:", error)
+            print()
 
 
 if __name__ == "__main__":

@@ -30,3 +30,6 @@ memory/*.db
 
 # Environment variables
 .env
+aegis_memory.db
+
+aegis_memory.db

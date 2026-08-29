@@ -1,85 +1,172 @@
 import sqlite3
-from pathlib import Path
+import math
+import ollama
 
 
 class MemoryManager:
 
-    def __init__(self):
-        project_root = Path(__file__).resolve().parents[2]
-        memory_folder = project_root / "memory"
+    def __init__(self, db_name="aegis_memory.db"):
+        self.db_name = db_name
+        self.connection = sqlite3.connect(self.db_name)
+        self.cursor = self.connection.cursor()
 
-        memory_folder.mkdir(exist_ok=True)
-
-        self.database = memory_folder / "aegis_memory.db"
-
-        self.create_database()
-
-    def create_database(self):
-        connection = sqlite3.connect(self.database)
-        cursor = connection.cursor()
-
-        cursor.execute("""
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                memory TEXT NOT NULL
+                memory TEXT NOT NULL,
+                embedding TEXT
             )
         """)
 
-        connection.commit()
-        connection.close()
+        self.connection.commit()
+
+    def create_embedding(self, text):
+        response = ollama.embed(
+            model="nomic-embed-text:latest",
+            input=text
+        )
+
+        return response["embeddings"][0]
+
+    def cosine_similarity(self, a, b):
+        dot_product = sum(
+            x * y for x, y in zip(a, b)
+        )
+
+        magnitude_a = math.sqrt(
+            sum(x * x for x in a)
+        )
+
+        magnitude_b = math.sqrt(
+            sum(x * x for x in b)
+        )
+
+        if magnitude_a == 0 or magnitude_b == 0:
+            return 0
+
+        return dot_product / (
+            magnitude_a * magnitude_b
+        )
 
     def remember(self, memory):
-        connection = sqlite3.connect(self.database)
-        cursor = connection.cursor()
+        memory = memory.strip()
 
-        cursor.execute(
-            "INSERT INTO memories (memory) VALUES (?)",
+        if not memory:
+            return False
+
+        self.cursor.execute(
+            """
+            SELECT id
+            FROM memories
+            WHERE LOWER(TRIM(memory)) = LOWER(TRIM(?))
+            LIMIT 1
+            """,
             (memory,)
         )
 
-        connection.commit()
-        connection.close()
+        if self.cursor.fetchone():
+            return False
+
+        embedding = self.create_embedding(memory)
+
+        embedding_text = ",".join(
+            str(value) for value in embedding
+        )
+
+        self.cursor.execute(
+            """
+            INSERT INTO memories (memory, embedding)
+            VALUES (?, ?)
+            """,
+            (memory, embedding_text)
+        )
+
+        self.connection.commit()
+
+        return True
+
+    def search(self, query, limit=5):
+        query = query.strip()
+
+        if not query:
+            return []
+
+        query_embedding = self.create_embedding(query)
+
+        self.cursor.execute(
+            """
+            SELECT memory, embedding
+            FROM memories
+            WHERE embedding IS NOT NULL
+            """
+        )
+
+        rows = self.cursor.fetchall()
+
+        results = []
+
+        for memory, embedding_text in rows:
+            try:
+                memory_embedding = [
+                    float(value)
+                    for value in embedding_text.split(",")
+                ]
+
+                score = self.cosine_similarity(
+                    query_embedding,
+                    memory_embedding
+                )
+
+                results.append((score, memory))
+
+            except Exception:
+                continue
+
+        results.sort(
+            key=lambda item: item[0],
+            reverse=True
+        )
+
+        return [
+            memory
+            for score, memory in results[:limit]
+        ]
 
     def get_memories(self):
-        connection = sqlite3.connect(self.database)
-        cursor = connection.cursor()
-
-        cursor.execute("SELECT memory FROM memories")
-
-        memories = cursor.fetchall()
-
-        connection.close()
-
-        return [memory[0] for memory in memories]
-
-    def search(self, keyword):
-        connection = sqlite3.connect(self.database)
-        cursor = connection.cursor()
-
-        cursor.execute(
-            "SELECT memory FROM memories WHERE memory LIKE ?",
-            (f"%{keyword}%",)
+        self.cursor.execute(
+            """
+            SELECT memory
+            FROM memories
+            ORDER BY id ASC
+            """
         )
 
-        memories = cursor.fetchall()
+        rows = self.cursor.fetchall()
 
-        connection.close()
+        return [row[0] for row in rows]
 
-        return [memory[0] for memory in memories]
-
-    # Forget memories matching a keyword
     def forget(self, keyword):
-        connection = sqlite3.connect(self.database)
-        cursor = connection.cursor()
+        keyword = keyword.strip()
 
-        cursor.execute(
-            "DELETE FROM memories WHERE memory LIKE ?",
-            (f"%{keyword}%",)
+        if not keyword:
+            return 0
+
+        self.cursor.execute(
+            """
+            DELETE FROM memories
+            WHERE LOWER(memory) LIKE LOWER(?)
+            """,
+            ("%" + keyword + "%",)
         )
 
-        deleted = cursor.rowcount
+        deleted = self.cursor.rowcount
 
-        connection.commit()
-        connection.close()
+        self.connection.commit()
 
         return deleted
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
+            self.connection = None
+            self.cursor = None
