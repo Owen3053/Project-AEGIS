@@ -1,11 +1,17 @@
 import webbrowser
 
+from backend.tools.base_tool import BaseTool
 
-class SearchTool:
 
-    def search(self, query):
+class SearchTool(BaseTool):
 
-        query = query.strip()
+    name = "search"
+
+    description = "Search the web using Google"
+
+    def execute(self, data):
+
+        query = data.strip()
 
         if not query:
             return "What would you like me to search for?"

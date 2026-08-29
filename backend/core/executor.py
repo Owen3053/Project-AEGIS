@@ -1,5 +1,5 @@
 from backend.automation.automation_manager import AutomationManager
-from backend.tools.search_tool import SearchTool
+from backend.tools.tool_manager import ToolManager
 
 
 class CommandExecutor:
@@ -7,7 +7,7 @@ class CommandExecutor:
     def __init__(self, memory_service):
 
         self.automation = AutomationManager()
-        self.search = SearchTool()
+        self.tools = ToolManager()
         self.memory = memory_service
 
     def execute(self, command):
@@ -86,9 +86,9 @@ class CommandExecutor:
 
             if action == "search":
 
-                if not data:
-                    return "What would you like me to search for?"
-
-                return self.search.search(data)
+                return self.tools.execute(
+                    "search",
+                    data
+                )
 
         return "I don't know how to execute that command."
