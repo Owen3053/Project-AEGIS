@@ -88,6 +88,29 @@ class CommandRouter:
                 "data": None
             }
 
+        # Natural system information requests
+
+        natural_system_info = [
+            "what processor do i have",
+            "what cpu do i have",
+            "what cpu does this computer have",
+            "what processor does this computer have",
+            "what operating system am i using",
+            "what operating system is this",
+            "tell me about my computer",
+            "tell me about this computer",
+            "show me my computer information",
+            "show me my system information"
+        ]
+
+        if text in natural_system_info:
+
+            return {
+                "type": "tool",
+                "action": "system_info",
+                "data": None
+            }
+
         # ==========================================
         # AUTOMATION
         # ==========================================
@@ -181,6 +204,32 @@ class CommandRouter:
                     "data": expression
                 }
 
+        # Natural calculator requests
+
+        natural_calculator = [
+            "how much is ",
+            "how many is ",
+            "solve ",
+            "work out ",
+            "what does ",
+            "can you calculate ",
+            "can you work out ",
+            "please calculate ",
+            "please solve "
+        ]
+
+        for trigger in natural_calculator:
+
+            if text.startswith(trigger):
+
+                expression = message[len(trigger):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "calculator",
+                    "data": expression
+                }
+
         # ==========================================
         # SEARCH
         # ==========================================
@@ -206,6 +255,8 @@ class CommandRouter:
                     "data": query
                 }
 
+        # Natural search requests
+
         natural_search = [
             "can you search for ",
             "could you search for ",
@@ -213,7 +264,9 @@ class CommandRouter:
             "can you look up ",
             "could you look up ",
             "please look up ",
-            "find me information about "
+            "find me information about ",
+            "tell me about the latest ",
+            "what is happening with "
         ]
 
         for trigger in natural_search:
@@ -256,7 +309,8 @@ if __name__ == "__main__":
         # System information
         "system info",
         "computer information",
-        "pc info",
+        "what processor do i have",
+        "tell me about my computer",
 
         # Automation
         "open calculator",
@@ -266,10 +320,13 @@ if __name__ == "__main__":
         # Calculator
         "calculate 25 * 4",
         "what is 100 + 50",
+        "how much is 25 times 40",
+        "solve 100 + 200",
 
         # Search
         "search Python tutorials",
         "look up autonomous drones",
+        "can you search for AI news",
 
         # Chat
         "Hello AEGIS"
@@ -280,4 +337,3 @@ if __name__ == "__main__":
         print(f"{test} ->")
         print(router.route(test))
         print()
-
