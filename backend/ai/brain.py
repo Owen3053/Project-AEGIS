@@ -172,7 +172,7 @@ def main():
 
     print("=" * 50)
     print("             PROJECT AEGIS")
-    print("             AI Assistant v0.8.0")
+    print("             AI Assistant v0.9.2")
     print("=" * 50)
 
     print("AEGIS is online.")
