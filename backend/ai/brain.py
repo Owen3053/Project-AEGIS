@@ -1,3 +1,7 @@
+
+import json
+import re
+
 import ollama
 
 from backend.core.router import CommandRouter
@@ -35,6 +39,133 @@ class AegisBrain:
         ]
 
     # ==========================================
+    # AI TOOL SELECTION
+    # ==========================================
+
+    def select_tool(self, message):
+
+        tools = self.executor.tools.list_tools()
+
+        tool_descriptions = []
+
+        for name, description in tools.items():
+
+            tool_descriptions.append(
+                f"- {name}: {description}"
+            )
+
+        available_tools = "\n".join(tool_descriptions)
+
+        prompt = f"""
+You are the tool-selection system for AEGIS.
+
+Available tools:
+{available_tools}
+
+Analyze the user's request and decide whether one of the
+available tools should be used.
+
+Return ONLY valid JSON.
+
+If a tool is required, return:
+
+{{
+    "use_tool": true,
+    "tool": "tool_name",
+    "data": "data needed by the tool"
+}}
+
+If no tool is required, return:
+
+{{
+    "use_tool": false,
+    "tool": null,
+    "data": null
+}}
+
+Rules:
+
+1. Only select tools from the available tools list.
+2. Do not invent tool names.
+3. Do not answer the user's question.
+4. Do not explain your decision.
+5. Return JSON only.
+6. For calculator requests, put the mathematical expression in data.
+7. For search requests, put the search query in data.
+8. For system information requests, data should be null.
+
+User request:
+{message}
+"""
+
+        try:
+
+            response = ollama.chat(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": prompt
+                    }
+                ]
+            )
+
+            raw = response["message"]["content"].strip()
+
+            # --------------------------------------
+            # Remove markdown code fences if present
+            # --------------------------------------
+
+            raw = re.sub(
+                r"```(?:json)?",
+                "",
+                raw,
+                flags=re.IGNORECASE
+            ).replace("```", "").strip()
+
+            # --------------------------------------
+            # Extract JSON object
+            # --------------------------------------
+
+            match = re.search(
+                r"\{.*\}",
+                raw,
+                re.DOTALL
+            )
+
+            if not match:
+                return None
+
+            result = json.loads(match.group(0))
+
+            if not isinstance(result, dict):
+                return None
+
+            if result.get("use_tool") is not True:
+                return None
+
+            tool_name = result.get("tool")
+
+            if not tool_name:
+                return None
+
+            # --------------------------------------
+            # Security / validity check
+            # --------------------------------------
+
+            if not self.executor.tools.has_tool(tool_name):
+                return None
+
+            return {
+                "type": "tool",
+                "action": tool_name,
+                "data": result.get("data")
+            }
+
+        except Exception:
+            return None
+
+    # ==========================================
     # AUTOMATIC MEMORY DETECTION
     # ==========================================
 
@@ -55,7 +186,9 @@ class AegisBrain:
             "AEGIS: I noticed this may be useful to remember:"
         )
         print()
+
         print(f'  "{memory}"')
+
         print()
 
         confirmation = input(
@@ -84,19 +217,10 @@ class AegisBrain:
         print()
 
     # ==========================================
-    # THINK
+    # NORMAL AI CHAT
     # ==========================================
 
-    def think(self, message):
-
-        command = self.router.route(message)
-
-        # --------------------------------------
-        # Explicit commands
-        # --------------------------------------
-
-        if command["type"] != "chat":
-            return self.executor.execute(command)
+    def chat(self, message):
 
         # --------------------------------------
         # Automatic memory detection
@@ -154,6 +278,38 @@ class AegisBrain:
         return answer
 
     # ==========================================
+    # THINK
+    # ==========================================
+
+    def think(self, message):
+
+        # --------------------------------------
+        # Layer 1: Existing deterministic router
+        # --------------------------------------
+
+        command = self.router.route(message)
+
+        if command["type"] != "chat":
+
+            return self.executor.execute(command)
+
+        # --------------------------------------
+        # Layer 2: AI tool selection
+        # --------------------------------------
+
+        ai_command = self.select_tool(message)
+
+        if ai_command:
+
+            return self.executor.execute(ai_command)
+
+        # --------------------------------------
+        # Layer 3: Normal AI conversation
+        # --------------------------------------
+
+        return self.chat(message)
+
+    # ==========================================
     # CLOSE
     # ==========================================
 
@@ -172,7 +328,7 @@ def main():
 
     print("=" * 50)
     print("             PROJECT AEGIS")
-    print("             AI Assistant v0.9.2")
+    print("             AI Assistant v0.9.5")
     print("=" * 50)
 
     print("AEGIS is online.")
@@ -184,20 +340,28 @@ def main():
         while True:
 
             try:
-                user_input = input("You: ").strip()
+
+                user_input = input(
+                    "You: "
+                ).strip()
 
             except KeyboardInterrupt:
 
                 print(
                     "\nAEGIS: Shutting down. Goodbye."
                 )
+
                 break
 
-            if user_input.lower() in ["exit", "quit"]:
+            if user_input.lower() in [
+                "exit",
+                "quit"
+            ]:
 
                 print(
                     "\nAEGIS: Shutting down. Goodbye."
                 )
+
                 break
 
             if not user_input:
@@ -205,16 +369,24 @@ def main():
 
             try:
 
-                answer = brain.think(user_input)
+                answer = brain.think(
+                    user_input
+                )
 
                 print()
-                print("AEGIS:", answer)
+                print(
+                    "AEGIS:",
+                    answer
+                )
                 print()
 
             except Exception as error:
 
                 print()
-                print("AEGIS ERROR:", error)
+                print(
+                    "AEGIS ERROR:",
+                    error
+                )
                 print()
 
     finally:
@@ -224,3 +396,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
