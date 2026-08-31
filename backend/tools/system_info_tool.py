@@ -1,5 +1,5 @@
-import platform
 import os
+import platform
 
 from backend.tools.base_tool import BaseTool
 
@@ -22,17 +22,20 @@ class SystemInfoTool(BaseTool):
             python_version = platform.python_version()
             cpu_count = os.cpu_count()
 
-            return (
-                "System Information:\n\n"
-                f"Operating System: {system}\n"
-                f"OS Release: {release}\n"
-                f"OS Version: {version}\n"
-                f"Machine: {machine}\n"
-                f"Processor: {processor}\n"
-                f"CPU Cores: {cpu_count}\n"
-                f"Python Version: {python_version}"
-            )
+            information = {
+                "operating_system": system,
+                "os_release": release,
+                "os_version": version,
+                "machine": machine,
+                "processor": processor,
+                "cpu_cores": cpu_count,
+                "python_version": python_version
+            }
+
+            return self.success(information)
 
         except Exception as error:
 
-            return f"I couldn't retrieve the system information: {error}"
+            return self.failure(
+                f"I couldn't retrieve the system information: {error}"
+            )

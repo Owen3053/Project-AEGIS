@@ -11,13 +11,26 @@ class SearchTool(BaseTool):
 
     def execute(self, data):
 
-        query = data.strip()
+        if data is None:
+            return self.failure(
+                "What would you like me to search for?"
+            )
+
+        query = str(data).strip()
 
         if not query:
-            return "What would you like me to search for?"
+            return self.failure(
+                "What would you like me to search for?"
+            )
 
-        url = "https://www.google.com/search?q=" + query.replace(" ", "+")
+        url = (
+            "https://www.google.com/search?q="
+            + query.replace(" ", "+")
+        )
 
         webbrowser.open(url)
 
-        return f"Searching Google for: {query}"
+        return self.success({
+            "query": query,
+            "message": "Google search opened in the browser."
+        })

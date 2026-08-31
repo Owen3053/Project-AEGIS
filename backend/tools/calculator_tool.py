@@ -11,7 +11,6 @@ class CalculatorTool(BaseTool):
 
     description = "Perform basic mathematical calculations"
 
-    # Supported mathematical operators
     OPERATORS = {
         ast.Add: operator.add,
         ast.Sub: operator.sub,
@@ -26,16 +25,16 @@ class CalculatorTool(BaseTool):
     def execute(self, data):
 
         if data is None:
-            return "What would you like me to calculate?"
+            return self.failure(
+                "What would you like me to calculate?"
+            )
 
         expression = str(data).strip()
 
         if not expression:
-            return "What would you like me to calculate?"
-
-        # ==========================================
-        # NORMALIZE NATURAL-LANGUAGE MATH
-        # ==========================================
+            return self.failure(
+                "What would you like me to calculate?"
+            )
 
         expression = expression.lower()
 
@@ -51,38 +50,26 @@ class CalculatorTool(BaseTool):
         }
 
         for phrase, symbol in replacements.items():
-            expression = expression.replace(phrase, symbol)
-
-        # ==========================================
-        # CLEAN COMMON PUNCTUATION
-        # ==========================================
-
-        expression = expression.strip()
+            expression = expression.replace(
+                phrase,
+                symbol
+            )
 
         expression = re.sub(
             r"[?!.,;:]+$",
             "",
             expression
-        )
-
-        expression = expression.strip()
-
-        # ==========================================
-        # VALIDATE CHARACTERS
-        # ==========================================
+        ).strip()
 
         allowed = "0123456789+-*/().% "
 
-        if any(char not in allowed for char in expression):
-
-            return (
-                "I can only perform basic "
-                "mathematical calculations."
+        if any(
+            char not in allowed
+            for char in expression
+        ):
+            return self.failure(
+                "I can only perform basic mathematical calculations."
             )
-
-        # ==========================================
-        # SAFE AST CALCULATION
-        # ==========================================
 
         try:
 
@@ -93,46 +80,38 @@ class CalculatorTool(BaseTool):
 
             result = self._evaluate(tree.body)
 
-            return f"The answer is {result}"
+            return self.success({
+                "expression": expression,
+                "result": result
+            })
 
         except ZeroDivisionError:
 
-            return "I can't divide by zero."
+            return self.failure(
+                "I can't divide by zero."
+            )
 
         except Exception:
 
-            return "I couldn't calculate that."
+            return self.failure(
+                "I couldn't calculate that."
+            )
 
     def _evaluate(self, node):
 
-        # ------------------------------------------
-        # Numbers
-        # ------------------------------------------
-
-        if isinstance(
-            node,
-            ast.Constant
-        ):
+        if isinstance(node, ast.Constant):
 
             if isinstance(
                 node.value,
                 (int, float)
             ):
-
                 return node.value
 
             raise ValueError(
                 "Invalid constant"
             )
 
-        # ------------------------------------------
-        # Binary operations
-        # ------------------------------------------
-
-        if isinstance(
-            node,
-            ast.BinOp
-        ):
+        if isinstance(node, ast.BinOp):
 
             operation = self.OPERATORS.get(
                 type(node.op)
@@ -156,14 +135,7 @@ class CalculatorTool(BaseTool):
                 right
             )
 
-        # ------------------------------------------
-        # Unary operations
-        # ------------------------------------------
-
-        if isinstance(
-            node,
-            ast.UnaryOp
-        ):
+        if isinstance(node, ast.UnaryOp):
 
             operation = self.OPERATORS.get(
                 type(node.op)
@@ -192,7 +164,6 @@ if __name__ == "__main__":
     calculator = CalculatorTool()
 
     tests = [
-
         "25 * 4",
         "100 + 50",
         "37 * 24?",
@@ -203,7 +174,6 @@ if __name__ == "__main__":
         "2 ** 8",
         "10 / 0",
         "hello world"
-
     ]
 
     for test in tests:
