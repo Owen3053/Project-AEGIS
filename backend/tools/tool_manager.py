@@ -1,14 +1,18 @@
+
 from backend.tools.search_tool import SearchTool
 from backend.tools.calculator_tool import CalculatorTool
+from backend.tools.system_info_tool import SystemInfoTool
 
 
 class ToolManager:
 
     def __init__(self):
+
         self.tools = {}
 
         self.register(SearchTool())
         self.register(CalculatorTool())
+        self.register(SystemInfoTool())
 
     def register(self, tool):
 
@@ -45,3 +49,18 @@ class ToolManager:
             return f"I don't have a '{name}' tool yet."
 
         return self.tools[name].execute(data)
+
+    def describe_tools(self):
+
+        if not self.tools:
+            return "I don't have any tools available."
+
+        lines = []
+
+        for name, tool in self.tools.items():
+            lines.append(f"• {name} — {tool.description}")
+
+        return (
+            f"I have {len(self.tools)} tools available:\n\n"
+            + "\n".join(lines)
+        )
