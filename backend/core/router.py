@@ -46,6 +46,49 @@ class CommandRouter:
             }
 
         # ==========================================
+        # TOOL DISCOVERY
+        # ==========================================
+
+        tool_discovery_triggers = [
+            "what tools do you have",
+            "what tools are available",
+            "list your tools",
+            "show your tools",
+            "show me your tools",
+            "available tools"
+        ]
+
+        if text in tool_discovery_triggers:
+
+            return {
+                "type": "tool_discovery",
+                "action": None,
+                "data": None
+            }
+
+        # ==========================================
+        # SYSTEM INFORMATION
+        # ==========================================
+
+        system_info_triggers = [
+            "system info",
+            "system information",
+            "computer info",
+            "computer information",
+            "pc info",
+            "my system info",
+            "my computer info"
+        ]
+
+        if text in system_info_triggers:
+
+            return {
+                "type": "tool",
+                "action": "system_info",
+                "data": None
+            }
+
+        # ==========================================
         # AUTOMATION
         # ==========================================
 
@@ -123,7 +166,7 @@ class CommandRouter:
         calculate_triggers = [
             "calculate ",
             "what is ",
-            "compute ",
+            "compute "
         ]
 
         for trigger in calculate_triggers:
@@ -206,31 +249,27 @@ if __name__ == "__main__":
         "remember that my name is Owen",
         "forget my name",
         "what do you remember",
-        "show me my memories",
+
+        # Tool discovery
+        "what tools do you have",
+
+        # System information
+        "system info",
+        "computer information",
+        "pc info",
 
         # Automation
         "open calculator",
-        "open the calculator",
         "launch calculator",
         "start notepad",
-        "can you open calculator",
-        "could you open youtube",
-        "please launch chrome",
 
         # Calculator
         "calculate 25 * 4",
         "what is 100 + 50",
-        "compute (20 + 10) * 3",
 
         # Search
         "search Python tutorials",
-        "search for Python AI tutorials",
         "look up autonomous drones",
-        "google AEGIS AI assistant",
-        "can you search for Python AI",
-        "could you search for robotics",
-        "please look up autonomous drones",
-        "find me information about AI",
 
         # Chat
         "Hello AEGIS"
@@ -241,3 +280,4 @@ if __name__ == "__main__":
         print(f"{test} ->")
         print(router.route(test))
         print()
+

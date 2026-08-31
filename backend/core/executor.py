@@ -79,6 +79,14 @@ class CommandExecutor:
                 return self.automation.open(data)
 
         # ==========================================
+        # TOOL DISCOVERY
+        # ==========================================
+
+        if command_type == "tool_discovery":
+
+            return self.tools.describe_tools()
+
+        # ==========================================
         # TOOLS
         # ==========================================
 
@@ -118,6 +126,18 @@ if __name__ == "__main__":
 
         {
             "type": "tool",
+            "action": "system_info",
+            "data": None
+        },
+
+        {
+            "type": "tool_discovery",
+            "action": None,
+            "data": None
+        },
+
+        {
+            "type": "tool",
             "action": "unknown",
             "data": "test"
         }
@@ -129,3 +149,4 @@ if __name__ == "__main__":
         print(test)
         print(executor.execute(test))
         print()
+
