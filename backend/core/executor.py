@@ -1,4 +1,5 @@
 from backend.automation.automation_manager import AutomationManager
+from backend.core.permission_manager import PermissionManager
 from backend.tools.tool_manager import ToolManager
 
 
@@ -17,6 +18,10 @@ class CommandExecutor:
 
         self.memory = memory_service
 
+        self.permissions = (
+            PermissionManager()
+        )
+
     # ==========================================
     # EXECUTE
     # ==========================================
@@ -34,6 +39,37 @@ class CommandExecutor:
             return (
                 "I received an invalid command."
             )
+
+        permission = (
+            self.permissions.check(
+                command
+            )
+        )
+
+        if not permission["allowed"]:
+
+            return (
+                "AEGIS safety system blocked "
+                "this action: "
+                + permission["reason"]
+            )
+
+        if permission[
+            "requires_confirmation"
+        ]:
+
+            approved = (
+                self.permissions
+                .request_confirmation(
+                    command
+                )
+            )
+
+            if not approved:
+
+                return (
+                    "AEGIS: Action cancelled."
+                )
 
         command_type = command.get(
             "type"
@@ -227,8 +263,8 @@ if __name__ == "__main__":
         },
 
         {
-            "type": "tool_discovery",
-            "action": None,
+            "type": "tool",
+            "action": "tool_discovery",
             "data": None
         },
 
@@ -236,6 +272,15 @@ if __name__ == "__main__":
             "type": "automation",
             "action": "open",
             "data": "calculator"
+        },
+
+        {
+            "type": "tool",
+            "action": "files",
+            "data": {
+                "operation": "details",
+                "path": ".\\backend\\core\\executor.py"
+            }
         },
 
         {
