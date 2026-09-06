@@ -113,9 +113,116 @@ class CommandRouter:
         # FILE SYSTEM
         # ==========================================
 
+        # ------------------------------------------
+        # SEARCH FILES
+        # ------------------------------------------
+
+        file_search_commands = [
+            "find file ",
+            "find files ",
+            "find ",
+            "search files for ",
+            "search my files for ",
+            "search my project for ",
+            "find my files for ",
+            "locate "
+        ]
+
+        for trigger in file_search_commands:
+
+            if text.startswith(trigger):
+
+                query = message[len(trigger):].strip()
+
+                query_lower = query.lower()
+
+                # Normalize natural-language filename phrases.
+                for phrase in [
+                    "files named ",
+                    "file named ",
+                    "files called ",
+                    "file called ",
+                    "named ",
+                    "called ",
+                ]:
+
+                    if query_lower.startswith(phrase):
+
+                        query = query[len(phrase):].strip()
+                        break
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "search",
+                        "query": query,
+                        "path": "home",
+                        "content": False
+                    }
+                }
+
+        # ------------------------------------------
+        # CONTENT SEARCH
+        # ------------------------------------------
+
+        content_search_commands = [
+            "search file contents for ",
+            "search file content for ",
+            "search inside files for ",
+            "search inside my files for ",
+            "find text ",
+            "find text in my files "
+        ]
+
+        for trigger in content_search_commands:
+
+            if text.startswith(trigger):
+
+                query = message[len(trigger):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "search",
+                        "query": query,
+                        "path": "home",
+                        "content": True
+                    }
+                }
+
+        # ------------------------------------------
+        # PROJECT SEARCH
+        # ------------------------------------------
+
+        project_search_commands = [
+            "search project for ",
+            "search the project for ",
+            "find in project ",
+            "find in my project "
+        ]
+
+        for trigger in project_search_commands:
+
+            if text.startswith(trigger):
+
+                query = message[len(trigger):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "search",
+                        "query": query,
+                        "path": ".",
+                        "content": True
+                    }
+                }
+
+        # ------------------------------------------
         # READ FILE
-        # Specific read commands must be checked before
-        # generic listing commands.
+        # ------------------------------------------
 
         file_read_triggers = [
             "read file ",
@@ -169,7 +276,9 @@ class CommandRouter:
                     }
                 }
 
+        # ------------------------------------------
         # LIST DIRECTORY WITH PATH
+        # ------------------------------------------
 
         file_path_triggers = [
             "list files in ",
@@ -202,7 +311,9 @@ class CommandRouter:
                     "data": path
                 }
 
+        # ------------------------------------------
         # GENERIC FILE LISTING
+        # ------------------------------------------
 
         home_file_commands = {
             "list files",
@@ -463,6 +574,14 @@ if __name__ == "__main__":
         "read file test.txt",
         "show contents of notes.txt",
         "inspect file config.json",
+
+        # File system - search
+        "find file_tool",
+        "find file router.py",
+        "find files named router.py",
+        "search files for calculator",
+        "search project for ToolManager",
+        "search file contents for Ollama",
 
         # Automation
         "open calculator",

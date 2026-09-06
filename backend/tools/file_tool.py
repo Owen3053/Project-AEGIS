@@ -9,10 +9,12 @@ class FileTool(BaseTool):
 
     description = (
         "List files and folders, check paths, inspect directories, "
-        "and safely read text files on the computer"
+        "read text files, and search files on the computer"
     )
 
     MAX_READ_SIZE = 1 * 1024 * 1024
+    MAX_SEARCH_RESULTS = 100
+    MAX_CONTENT_SEARCH_FILE_SIZE = 512 * 1024
 
     HOME_ALIASES = {
         "home",
@@ -142,6 +144,9 @@ class FileTool(BaseTool):
 
         if operation == "read":
             return self._read_file(target)
+
+        if operation == "search":
+            return self._search_files(data)
 
         return {
             "success": False,
@@ -353,6 +358,249 @@ class FileTool(BaseTool):
             }
 
     # ==========================================
+    # SEARCH FILES
+    # ==========================================
+
+    def _search_files(self, data):
+
+        if not isinstance(data, dict):
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": "Search requires a search dictionary."
+            }
+
+        query = str(
+            data.get("query", "")
+        ).strip()
+
+        root = data.get("path")
+
+        search_content = bool(
+            data.get("content", False)
+        )
+
+        extension = str(
+            data.get("extension", "")
+        ).strip().lower()
+
+        if not query:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": "Search query cannot be empty."
+            }
+
+        search_root = self._resolve_path(root)
+
+        if not os.path.exists(search_root):
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": (
+                    f"Search path does not exist: "
+                    f"{search_root}"
+                )
+            }
+
+        if not os.path.isdir(search_root):
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": (
+                    f"Search path is not a folder: "
+                    f"{search_root}"
+                )
+            }
+
+        query_lower = query.lower()
+
+        if extension and not extension.startswith("."):
+            extension = f".{extension}"
+
+        results = []
+
+        try:
+
+            for current_root, directories, files in os.walk(
+                search_root,
+                topdown=True
+            ):
+
+                directories.sort(
+                    key=str.lower
+                )
+
+                files.sort(
+                    key=str.lower
+                )
+
+                for filename in files:
+
+                    if len(results) >= self.MAX_SEARCH_RESULTS:
+                        break
+
+                    if extension:
+                        if not filename.lower().endswith(
+                            extension
+                        ):
+                            continue
+
+                    full_path = os.path.join(
+                        current_root,
+                        filename
+                    )
+
+                    filename_matches = (
+                        query_lower in filename.lower()
+                    )
+
+                    content_matches = False
+
+                    if search_content and not filename_matches:
+
+                        content_matches = (
+                            self._file_contains_text(
+                                full_path,
+                                query_lower
+                            )
+                        )
+
+                    if not (
+                        filename_matches
+                        or content_matches
+                    ):
+                        continue
+
+                    try:
+
+                        relative_path = os.path.relpath(
+                            full_path,
+                            search_root
+                        )
+
+                    except ValueError:
+
+                        relative_path = filename
+
+                    try:
+
+                        file_size = os.path.getsize(
+                            full_path
+                        )
+
+                    except OSError:
+
+                        file_size = None
+
+                    results.append(
+                        {
+                            "name": filename,
+                            "path": full_path,
+                            "relative_path": relative_path,
+                            "size": file_size,
+                            "match": (
+                                "content"
+                                if content_matches
+                                else "filename"
+                            )
+                        }
+                    )
+
+                if len(results) >= self.MAX_SEARCH_RESULTS:
+                    break
+
+            return {
+                "success": True,
+                "tool": self.name,
+                "data": {
+                    "operation": "search",
+                    "query": query,
+                    "path": search_root,
+                    "content_search": search_content,
+                    "extension": extension or None,
+                    "result_count": len(results),
+                    "results": results,
+                    "truncated": (
+                        len(results)
+                        >= self.MAX_SEARCH_RESULTS
+                    )
+                },
+                "error": None
+            }
+
+        except PermissionError:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": "Permission denied during search."
+            }
+
+        except OSError as error:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": str(error)
+            }
+
+        except Exception as error:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": str(error)
+            }
+
+    def _file_contains_text(self, path, query_lower):
+
+        extension = os.path.splitext(path)[1].lower()
+
+        if extension not in self.TEXT_EXTENSIONS:
+            return False
+
+        try:
+
+            file_size = os.path.getsize(path)
+
+            if file_size > self.MAX_CONTENT_SEARCH_FILE_SIZE:
+                return False
+
+            with open(
+                path,
+                "r",
+                encoding="utf-8",
+                errors="replace"
+            ) as file:
+
+                for line in file:
+
+                    if query_lower in line.lower():
+                        return True
+
+        except (
+            PermissionError,
+            OSError,
+            UnicodeError
+        ):
+
+            return False
+
+        return False
+
+    # ==========================================
     # PATH RESOLUTION
     # ==========================================
 
@@ -475,27 +723,15 @@ class FileTool(BaseTool):
             os.path.expanduser(requested)
         )
 
-        # Explicit paths should be preserved.
         if os.path.isabs(expanded):
-
-            return expanded
-
-        # A bare filename is searched from the current
-        # working directory.
-        if (
-            os.path.dirname(expanded)
-            and expanded.lower() not in self.FOLDER_ALIASES
-        ):
             return expanded
 
         normalized = expanded.lower()
 
         if normalized in self.HOME_ALIASES:
-
             return self._resolve_path(expanded)
 
         if normalized in self.FOLDER_ALIASES:
-
             return self._resolve_path(expanded)
 
         return expanded
@@ -563,7 +799,6 @@ class FileTool(BaseTool):
         )
 
         if os.path.isdir(standard_path):
-
             return standard_path
 
         # ==========================================
@@ -582,7 +817,6 @@ class FileTool(BaseTool):
             )
 
             if os.path.isdir(onedrive_path):
-
                 return onedrive_path
 
         return standard_path
@@ -593,18 +827,32 @@ if __name__ == "__main__":
     tool = FileTool()
 
     tests = [
-        None,
-        "home",
-        "documents",
-        "downloads",
-        "desktop",
-        "onedrive",
+        {
+            "operation": "list",
+            "path": "home"
+        },
+        {
+            "operation": "read",
+            "path": ".\\README.md"
+        },
+        {
+            "operation": "search",
+            "query": "file_tool",
+            "path": "home"
+        },
+        {
+            "operation": "search",
+            "query": "ToolManager",
+            "path": ".",
+            "content": True,
+            "extension": ".py"
+        },
     ]
 
     for test in tests:
 
         print(
-            f"\nLIST INPUT: {test}"
+            f"\nINPUT: {test}"
         )
 
         print(
