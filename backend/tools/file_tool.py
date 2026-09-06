@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from backend.tools.base_tool import BaseTool
 
@@ -9,7 +10,8 @@ class FileTool(BaseTool):
 
     description = (
         "List files and folders, check paths, inspect directories, "
-        "read text files, and search files on the computer"
+        "read text files, search files, and inspect file details "
+        "on the computer"
     )
 
     MAX_READ_SIZE = 1 * 1024 * 1024
@@ -147,6 +149,9 @@ class FileTool(BaseTool):
 
         if operation == "search":
             return self._search_files(data)
+
+        if operation == "details":
+            return self._file_details(target)
 
         return {
             "success": False,
@@ -601,6 +606,153 @@ class FileTool(BaseTool):
         return False
 
     # ==========================================
+    # FILE DETAILS
+    # ==========================================
+
+    def _file_details(self, data):
+
+        path = self._resolve_details_path(data)
+
+        if not path:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": "File path cannot be empty."
+            }
+
+        if not os.path.exists(path):
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": f"Path does not exist: {path}"
+            }
+
+        try:
+
+            is_file = os.path.isfile(path)
+            is_directory = os.path.isdir(path)
+
+            stats = os.stat(path)
+
+            size = stats.st_size
+
+            extension = (
+                os.path.splitext(path)[1].lower()
+                if is_file
+                else None
+            )
+
+            return {
+                "success": True,
+                "tool": self.name,
+                "data": {
+                    "operation": "details",
+                    "name": os.path.basename(
+                        os.path.normpath(path)
+                    ),
+                    "path": os.path.abspath(path),
+                    "extension": extension,
+                    "size": size,
+                    "size_human": self._format_size(size),
+                    "created": self._format_timestamp(
+                        stats.st_ctime
+                    ),
+                    "modified": self._format_timestamp(
+                        stats.st_mtime
+                    ),
+                    "accessed": self._format_timestamp(
+                        stats.st_atime
+                    ),
+                    "is_file": is_file,
+                    "is_directory": is_directory
+                },
+                "error": None
+            }
+
+        except PermissionError:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": "Permission denied."
+            }
+
+        except OSError as error:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": str(error)
+            }
+
+        except Exception as error:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": str(error)
+            }
+
+    def _resolve_details_path(self, data):
+
+        if not data:
+            return ""
+
+        requested = str(data).strip()
+
+        if not requested:
+            return ""
+
+        expanded = os.path.expandvars(
+            os.path.expanduser(requested)
+        )
+
+        if os.path.isabs(expanded):
+
+            return expanded
+
+        normalized = expanded.lower()
+
+        if normalized in self.HOME_ALIASES:
+            return self._resolve_path(expanded)
+
+        if normalized in self.FOLDER_ALIASES:
+            return self._resolve_path(expanded)
+
+        return expanded
+
+    @staticmethod
+    def _format_size(size):
+
+        if size < 1024:
+            return f"{size} B"
+
+        if size < 1024 ** 2:
+            return f"{size / 1024:.2f} KB"
+
+        if size < 1024 ** 3:
+            return f"{size / (1024 ** 2):.2f} MB"
+
+        return f"{size / (1024 ** 3):.2f} GB"
+
+    @staticmethod
+    def _format_timestamp(timestamp):
+
+        return datetime.fromtimestamp(
+            timestamp
+        ).isoformat(
+            sep=" ",
+            timespec="seconds"
+        )
+
+    # ==========================================
     # PATH RESOLUTION
     # ==========================================
 
@@ -846,6 +998,10 @@ if __name__ == "__main__":
             "path": ".",
             "content": True,
             "extension": ".py"
+        },
+        {
+            "operation": "details",
+            "path": ".\\backend\\core\\router.py"
         },
     ]
 

@@ -114,6 +114,73 @@ class CommandRouter:
         # ==========================================
 
         # ------------------------------------------
+        # FILE DETAILS
+        # ------------------------------------------
+
+        file_details_commands = [
+            "details of ",
+            "details for ",
+            "file details ",
+            "file information ",
+            "file info ",
+            "tell me about ",
+            "what is the file info for ",
+            "what are the details of ",
+            "show details of ",
+            "show me the details of ",
+            "show information for ",
+            "show me information about "
+        ]
+
+        for trigger in file_details_commands:
+
+            if text.startswith(trigger):
+
+                path = message[len(trigger):].strip()
+
+                if path.startswith("the file "):
+                    path = path[len("the file "):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "details",
+                        "path": path
+                    }
+                }
+
+        # ------------------------------------------
+        # NATURAL FILE DETAILS
+        # ------------------------------------------
+
+        natural_file_details = [
+            "how large is ",
+            "how big is ",
+            "when was modified ",
+            "when was ",
+            "what type of file is "
+        ]
+
+        for trigger in natural_file_details:
+
+            if text.startswith(trigger):
+
+                path = message[len(trigger):].strip()
+
+                if path.endswith("?"):
+                    path = path[:-1].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "details",
+                        "path": path
+                    }
+                }
+
+        # ------------------------------------------
         # SEARCH FILES
         # ------------------------------------------
 
@@ -136,7 +203,6 @@ class CommandRouter:
 
                 query_lower = query.lower()
 
-                # Normalize natural-language filename phrases.
                 for phrase in [
                     "files named ",
                     "file named ",
@@ -582,6 +648,13 @@ if __name__ == "__main__":
         "search files for calculator",
         "search project for ToolManager",
         "search file contents for Ollama",
+
+        # File system - details
+        "details of router.py",
+        "file details file_tool.py",
+        "file info router.py",
+        "tell me about router.py",
+        "how large is router.py",
 
         # Automation
         "open calculator",
