@@ -7,17 +7,27 @@ import ollama
 class MemoryDetector:
 
     def __init__(self):
+
         self.model = "qwen3:8b"
 
-    def detect(self, message):
+    # ==========================================
+    # DETECT
+    # ==========================================
+
+    def detect(
+        self,
+        message
+    ):
 
         if not message or not message.strip():
-            return {
-                "should_remember": False,
-                "memory": "",
-                "category": "",
-                "importance": 0
-            }
+
+            return self._empty_result()
+
+        if self._is_command_like(
+            message
+        ):
+
+            return self._empty_result()
 
         prompt = f"""
 You are the memory detection system for AEGIS, a personal AI assistant.
@@ -42,12 +52,16 @@ Do NOT remember:
 - random conversation
 - information about other people
 - temporary moods or passing comments
-- obvious commands such as "open calculator"
-- temporary file operations
+- commands
+- instructions such as "open calculator"
+- voice or keyboard mode commands
+- file operations
+- search requests
+- calculator requests
 
 A useful memory should be:
 - concise
-- written as a factual statement
+- factual
 - useful in future conversations
 - about the user
 
@@ -110,6 +124,7 @@ User message:
                 result,
                 dict
             ):
+
                 return self._empty_result()
 
             should_remember = (
@@ -135,16 +150,19 @@ User message:
             ).strip().lower()
 
             try:
+
                 importance = int(
                     result.get(
                         "importance",
                         0
                     )
                 )
+
             except (
                 TypeError,
                 ValueError
             ):
+
                 importance = 0
 
             importance = max(
@@ -166,24 +184,30 @@ User message:
             }
 
             if category not in valid_categories:
+
                 category = "other"
 
             if not should_remember:
+
                 return self._empty_result()
 
             if not memory:
+
                 return self._empty_result()
 
             if len(memory) < 8:
-                return self._empty_result()
 
-            if importance <= 0:
-                importance = 3
+                return self._empty_result()
 
             if self._looks_temporary(
                 memory
             ):
+
                 return self._empty_result()
+
+            if importance <= 0:
+
+                importance = 3
 
             return {
                 "should_remember": True,
@@ -196,8 +220,89 @@ User message:
 
             return self._empty_result()
 
+    # ==========================================
+    # COMMAND FILTER
+    # ==========================================
+
     @staticmethod
-    def _parse_json(raw):
+    def _is_command_like(
+        message
+    ):
+
+        text = re.sub(
+            r"[.!?,;:]+$",
+            "",
+            str(message).strip().lower()
+        )
+
+        exact_commands = {
+            "voice mode",
+            "keyboard mode",
+            "voice",
+            "keyboard",
+            "enable voice",
+            "disable voice",
+            "turn on voice",
+            "turn off voice",
+            "switch to voice",
+            "switch to keyboard",
+            "exit",
+            "quit",
+            "shutdown",
+            "goodbye",
+            "open calculator",
+            "open notepad",
+            "open chrome",
+            "open youtube",
+            "open github",
+        }
+
+        if text in exact_commands:
+
+            return True
+
+        command_prefixes = (
+            "open ",
+            "launch ",
+            "start ",
+            "create ",
+            "make ",
+            "write ",
+            "copy ",
+            "move ",
+            "rename ",
+            "delete ",
+            "remove ",
+            "read file ",
+            "search ",
+            "find ",
+            "calculate ",
+            "compute ",
+            "remember ",
+            "forget ",
+            "show files ",
+            "list files ",
+            "list folders ",
+            "inspect folder ",
+            "inspect file ",
+            "details of ",
+            "file info ",
+            "voice mode",
+            "keyboard mode",
+        )
+
+        return text.startswith(
+            command_prefixes
+        )
+
+    # ==========================================
+    # JSON PARSING
+    # ==========================================
+
+    @staticmethod
+    def _parse_json(
+        raw
+    ):
 
         cleaned = re.sub(
             r"```(?:json)?",
@@ -210,10 +315,13 @@ User message:
         ).strip()
 
         try:
+
             return json.loads(
                 cleaned
             )
+
         except json.JSONDecodeError:
+
             pass
 
         match = re.search(
@@ -223,17 +331,27 @@ User message:
         )
 
         if not match:
+
             return None
 
         try:
+
             return json.loads(
                 match.group(0)
             )
+
         except json.JSONDecodeError:
+
             return None
 
+    # ==========================================
+    # TEMPORARY MEMORY FILTER
+    # ==========================================
+
     @staticmethod
-    def _looks_temporary(memory):
+    def _looks_temporary(
+        memory
+    ):
 
         temporary_phrases = [
             "right now",
@@ -255,6 +373,10 @@ User message:
             for phrase in temporary_phrases
         )
 
+    # ==========================================
+    # EMPTY RESULT
+    # ==========================================
+
     @staticmethod
     def _empty_result():
 
@@ -272,9 +394,11 @@ if __name__ == "__main__":
 
     tests = [
         "I am building Project AEGIS.",
-        "I like Python.",
-        "What is the weather today?",
+        "I use Python regularly.",
+        "voice mode",
+        "keyboard mode.",
         "Open calculator.",
+        "What is the weather today?",
     ]
 
     for test in tests:

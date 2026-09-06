@@ -18,18 +18,26 @@ class VoiceManager:
         self.tts = TextToSpeech()
 
     # ==========================================
+    # CALIBRATE
+    # ==========================================
+
+    def calibrate(self):
+
+        return self.stt.calibrate()
+
+    # ==========================================
     # LISTEN
     # ==========================================
 
     def listen(
         self,
-        duration=5
+        max_duration=8
     ):
 
         try:
 
             return self.stt.listen(
-                duration
+                max_duration=max_duration
             )
 
         except Exception as error:
@@ -53,71 +61,10 @@ class VoiceManager:
         )
 
     # ==========================================
-    # INTERACTION
-    # ==========================================
-
-    def listen_and_speak_test(
-        self,
-        duration=5
-    ):
-
-        result = self.listen(
-            duration
-        )
-
-        if result.get(
-            "error"
-        ):
-
-            print(
-                "AEGIS voice error:",
-                result["error"]
-            )
-
-            return result
-
-        text = result.get(
-            "text",
-            ""
-        )
-
-        print(
-            "You:",
-            text
-        )
-
-        if text:
-
-            self.speak(
-                f"I heard: {text}"
-            )
-
-        return result
-
-    # ==========================================
     # CLOSE
     # ==========================================
 
     def close(self):
 
         self.stt.close()
-
         self.tts.close()
-
-
-if __name__ == "__main__":
-
-    voice = VoiceManager(
-        microphone_device=1
-    )
-
-    try:
-
-        voice.listen_and_speak_test(
-            duration=5
-        )
-
-    finally:
-
-        voice.close()
-        
