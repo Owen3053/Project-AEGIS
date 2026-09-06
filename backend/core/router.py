@@ -9,6 +9,7 @@ class CommandRouter:
         # ==========================================
 
         if text.startswith("remember that "):
+
             return {
                 "type": "memory",
                 "action": "remember",
@@ -16,6 +17,7 @@ class CommandRouter:
             }
 
         if text.startswith("remember "):
+
             return {
                 "type": "memory",
                 "action": "remember",
@@ -23,6 +25,7 @@ class CommandRouter:
             }
 
         if text.startswith("forget "):
+
             return {
                 "type": "memory",
                 "action": "forget",
@@ -35,6 +38,7 @@ class CommandRouter:
             or "show my memories" in text
             or "show me my memories" in text
         ):
+
             return {
                 "type": "memory",
                 "action": "recall",
@@ -55,6 +59,7 @@ class CommandRouter:
         ]
 
         if text in tool_discovery_triggers:
+
             return {
                 "type": "tool_discovery",
                 "action": None,
@@ -76,6 +81,7 @@ class CommandRouter:
         ]
 
         if text in system_info_triggers:
+
             return {
                 "type": "tool",
                 "action": "system_info",
@@ -96,6 +102,7 @@ class CommandRouter:
         ]
 
         if text in natural_system_info:
+
             return {
                 "type": "tool",
                 "action": "system_info",
@@ -388,6 +395,7 @@ class CommandRouter:
             if text.startswith(trigger):
 
                 query = message[len(trigger):].strip()
+
                 query_lower = query.lower()
 
                 for phrase in [
@@ -401,10 +409,7 @@ class CommandRouter:
 
                     if query_lower.startswith(phrase):
 
-                        query = query[
-                            len(phrase):
-                        ].strip()
-
+                        query = query[len(phrase):].strip()
                         break
 
                 return {
@@ -632,14 +637,30 @@ class CommandRouter:
             "calculator",
             "calc",
             "notepad",
+            "paint",
             "chrome",
+            "edge",
+            "firefox",
             "vscode",
+            "explorer",
+            "file explorer",
+            "terminal",
+            "command prompt",
+            "powershell",
             "youtube",
             "google",
             "github",
+            "gmail",
+            "chatgpt",
             "downloads",
             "documents",
-            "desktop"
+            "desktop",
+            "pictures",
+            "photos",
+            "music",
+            "videos",
+            "favorites",
+            "onedrive"
         ]
 
         open_triggers = [
@@ -655,9 +676,34 @@ class CommandRouter:
 
             if text.startswith(trigger):
 
-                target = text[len(trigger):].strip()
+                target = message[len(trigger):].strip()
+                target_lower = target.lower()
 
-                if target in open_targets:
+                if target_lower.startswith("the "):
+
+                    target = target[4:].strip()
+                    target_lower = target.lower()
+
+                if target_lower in open_targets:
+
+                    return {
+                        "type": "automation",
+                        "action": "open",
+                        "data": target
+                    }
+
+                if (
+                    target_lower.startswith("http://")
+                    or target_lower.startswith("https://")
+                    or "\\" in target
+                    or "/" in target
+                    or target.startswith(".")
+                    or target.startswith("~")
+                    or (
+                        len(target) >= 2
+                        and target[1] == ":"
+                    )
+                ):
 
                     return {
                         "type": "automation",
@@ -673,19 +719,45 @@ class CommandRouter:
             "could you launch ",
             "please launch ",
             "can you start ",
-            "could you start "
+            "could you start ",
+            "please start "
         ]
 
         for trigger in natural_open:
 
             if text.startswith(trigger):
 
-                target = text[len(trigger):].strip()
+                target = message[
+                    len(trigger):
+                ].strip()
 
-                if target.startswith("the "):
+                target_lower = target.lower()
+
+                if target_lower.startswith("the "):
+
                     target = target[4:].strip()
+                    target_lower = target.lower()
 
-                if target in open_targets:
+                if target_lower in open_targets:
+
+                    return {
+                        "type": "automation",
+                        "action": "open",
+                        "data": target
+                    }
+
+                if (
+                    target_lower.startswith("http://")
+                    or target_lower.startswith("https://")
+                    or "\\" in target
+                    or "/" in target
+                    or target.startswith(".")
+                    or target.startswith("~")
+                    or (
+                        len(target) >= 2
+                        and target[1] == ":"
+                    )
+                ):
 
                     return {
                         "type": "automation",
@@ -805,27 +877,33 @@ if __name__ == "__main__":
 
     tests = [
 
+        # Memory
         "remember that my name is Owen",
         "forget my name",
         "what do you remember",
 
+        # Tool discovery
         "what tools do you have",
 
+        # System information
         "system info",
         "computer information",
         "what processor do i have",
         "tell me about my computer",
 
+        # File system - list
         "list files",
         "list files in home",
         "show me the files in documents",
         "inspect folder desktop",
         "list folders in downloads",
 
+        # File system - read
         "read file test.txt",
         "show contents of notes.txt",
         "inspect file config.json",
 
+        # File system - search
         "find file_tool",
         "find file router.py",
         "find files named router.py",
@@ -833,26 +911,44 @@ if __name__ == "__main__":
         "search project for ToolManager",
         "search file contents for Ollama",
 
+        # File system - details
         "details of router.py",
         "file details file_tool.py",
         "file info router.py",
         "how large is router.py",
 
+        # File system - operations
         "create folder .\\aegis_file_test",
         "create file .\\aegis_file_test\\notes.txt",
-        'write "hello AEGIS" to .\\aegis_file_test\\notes.txt',
+        "write hello AEGIS to .\\aegis_file_test\\notes.txt",
         "copy .\\aegis_file_test\\notes.txt to .\\aegis_file_test\\backup.txt",
         "move .\\aegis_file_test\\backup.txt to .\\aegis_file_test\\moved.txt",
         "rename .\\aegis_file_test\\moved.txt to .\\aegis_file_test\\renamed.txt",
 
+        # Automation
         "open calculator",
+        "open notepad",
+        "open desktop",
+        "open downloads",
+        "open youtube",
+        "open github",
+        "launch vscode",
+        "can you open documents",
+        "open https://www.google.com",
+        "open C:\\Windows",
 
+        # Calculator
         "calculate 25 * 4",
         "what is 100 + 50",
+        "how much is 25 times 40",
+        "solve 100 + 200",
 
+        # Search
         "search Python tutorials",
         "look up autonomous drones",
+        "can you search for AI news",
 
+        # Chat
         "Hello AEGIS"
     ]
 
