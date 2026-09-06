@@ -9,7 +9,6 @@ class CommandRouter:
         # ==========================================
 
         if text.startswith("remember that "):
-
             return {
                 "type": "memory",
                 "action": "remember",
@@ -17,7 +16,6 @@ class CommandRouter:
             }
 
         if text.startswith("remember "):
-
             return {
                 "type": "memory",
                 "action": "remember",
@@ -25,7 +23,6 @@ class CommandRouter:
             }
 
         if text.startswith("forget "):
-
             return {
                 "type": "memory",
                 "action": "forget",
@@ -38,7 +35,6 @@ class CommandRouter:
             or "show my memories" in text
             or "show me my memories" in text
         ):
-
             return {
                 "type": "memory",
                 "action": "recall",
@@ -59,7 +55,6 @@ class CommandRouter:
         ]
 
         if text in tool_discovery_triggers:
-
             return {
                 "type": "tool_discovery",
                 "action": None,
@@ -81,7 +76,6 @@ class CommandRouter:
         ]
 
         if text in system_info_triggers:
-
             return {
                 "type": "tool",
                 "action": "system_info",
@@ -102,7 +96,6 @@ class CommandRouter:
         ]
 
         if text in natural_system_info:
-
             return {
                 "type": "tool",
                 "action": "system_info",
@@ -123,7 +116,6 @@ class CommandRouter:
             "file details ",
             "file information ",
             "file info ",
-            "tell me about ",
             "what is the file info for ",
             "what are the details of ",
             "show details of ",
@@ -150,15 +142,10 @@ class CommandRouter:
                     }
                 }
 
-        # ------------------------------------------
-        # NATURAL FILE DETAILS
-        # ------------------------------------------
-
         natural_file_details = [
             "how large is ",
             "how big is ",
             "when was modified ",
-            "when was ",
             "what type of file is "
         ]
 
@@ -181,6 +168,207 @@ class CommandRouter:
                 }
 
         # ------------------------------------------
+        # FILE OPERATIONS
+        # ------------------------------------------
+
+        if text.startswith("create folder "):
+
+            path = message[len("create folder "):].strip()
+
+            return {
+                "type": "tool",
+                "action": "files",
+                "data": {
+                    "operation": "create_folder",
+                    "path": path
+                }
+            }
+
+        if text.startswith("create a folder "):
+
+            path = message[len("create a folder "):].strip()
+
+            return {
+                "type": "tool",
+                "action": "files",
+                "data": {
+                    "operation": "create_folder",
+                    "path": path
+                }
+            }
+
+        if text.startswith("make a folder "):
+
+            path = message[len("make a folder "):].strip()
+
+            return {
+                "type": "tool",
+                "action": "files",
+                "data": {
+                    "operation": "create_folder",
+                    "path": path
+                }
+            }
+
+        if text.startswith("create file "):
+
+            path = message[len("create file "):].strip()
+
+            return {
+                "type": "tool",
+                "action": "files",
+                "data": {
+                    "operation": "create_file",
+                    "path": path,
+                    "content": ""
+                }
+            }
+
+        if text.startswith("create a file "):
+
+            path = message[len("create a file "):].strip()
+
+            return {
+                "type": "tool",
+                "action": "files",
+                "data": {
+                    "operation": "create_file",
+                    "path": path,
+                    "content": ""
+                }
+            }
+
+        if text.startswith("write "):
+
+            remainder = message[len("write "):].strip()
+            lower_remainder = remainder.lower()
+
+            write_separators = [
+                " to file ",
+                " into file ",
+                " in file ",
+                " to ",
+                " into ",
+                " in "
+            ]
+
+            for separator in write_separators:
+
+                if separator in lower_remainder:
+
+                    index = lower_remainder.index(separator)
+
+                    content = remainder[:index].strip()
+                    path = remainder[
+                        index + len(separator):
+                    ].strip()
+
+                    if (
+                        len(content) >= 2
+                        and content[0] == '"'
+                        and content[-1] == '"'
+                    ):
+                        content = content[1:-1]
+
+                    return {
+                        "type": "tool",
+                        "action": "files",
+                        "data": {
+                            "operation": "write_file",
+                            "path": path,
+                            "content": content,
+                            "overwrite": False
+                        }
+                    }
+
+        if text.startswith("copy "):
+
+            remainder = message[len("copy "):].strip()
+            lower_remainder = remainder.lower()
+
+            for separator in [
+                " to ",
+                " into "
+            ]:
+
+                if separator in lower_remainder:
+
+                    index = lower_remainder.index(separator)
+
+                    source = remainder[:index].strip()
+                    destination = remainder[
+                        index + len(separator):
+                    ].strip()
+
+                    return {
+                        "type": "tool",
+                        "action": "files",
+                        "data": {
+                            "operation": "copy",
+                            "source": source,
+                            "destination": destination
+                        }
+                    }
+
+        if text.startswith("move "):
+
+            remainder = message[len("move "):].strip()
+            lower_remainder = remainder.lower()
+
+            for separator in [
+                " to ",
+                " into "
+            ]:
+
+                if separator in lower_remainder:
+
+                    index = lower_remainder.index(separator)
+
+                    source = remainder[:index].strip()
+                    destination = remainder[
+                        index + len(separator):
+                    ].strip()
+
+                    return {
+                        "type": "tool",
+                        "action": "files",
+                        "data": {
+                            "operation": "move",
+                            "source": source,
+                            "destination": destination
+                        }
+                    }
+
+        if text.startswith("rename "):
+
+            remainder = message[len("rename "):].strip()
+            lower_remainder = remainder.lower()
+
+            for separator in [
+                " to ",
+                " as "
+            ]:
+
+                if separator in lower_remainder:
+
+                    index = lower_remainder.index(separator)
+
+                    source = remainder[:index].strip()
+                    destination = remainder[
+                        index + len(separator):
+                    ].strip()
+
+                    return {
+                        "type": "tool",
+                        "action": "files",
+                        "data": {
+                            "operation": "rename",
+                            "source": source,
+                            "destination": destination
+                        }
+                    }
+
+        # ------------------------------------------
         # SEARCH FILES
         # ------------------------------------------
 
@@ -200,7 +388,6 @@ class CommandRouter:
             if text.startswith(trigger):
 
                 query = message[len(trigger):].strip()
-
                 query_lower = query.lower()
 
                 for phrase in [
@@ -209,12 +396,15 @@ class CommandRouter:
                     "files called ",
                     "file called ",
                     "named ",
-                    "called ",
+                    "called "
                 ]:
 
                     if query_lower.startswith(phrase):
 
-                        query = query[len(phrase):].strip()
+                        query = query[
+                            len(phrase):
+                        ].strip()
+
                         break
 
                 return {
@@ -615,33 +805,27 @@ if __name__ == "__main__":
 
     tests = [
 
-        # Memory
         "remember that my name is Owen",
         "forget my name",
         "what do you remember",
 
-        # Tool discovery
         "what tools do you have",
 
-        # System information
         "system info",
         "computer information",
         "what processor do i have",
         "tell me about my computer",
 
-        # File system - list
         "list files",
         "list files in home",
         "show me the files in documents",
         "inspect folder desktop",
         "list folders in downloads",
 
-        # File system - read
         "read file test.txt",
         "show contents of notes.txt",
         "inspect file config.json",
 
-        # File system - search
         "find file_tool",
         "find file router.py",
         "find files named router.py",
@@ -649,30 +833,26 @@ if __name__ == "__main__":
         "search project for ToolManager",
         "search file contents for Ollama",
 
-        # File system - details
         "details of router.py",
         "file details file_tool.py",
         "file info router.py",
-        "tell me about router.py",
         "how large is router.py",
 
-        # Automation
-        "open calculator",
-        "launch calculator",
-        "start notepad",
+        "create folder .\\aegis_file_test",
+        "create file .\\aegis_file_test\\notes.txt",
+        'write "hello AEGIS" to .\\aegis_file_test\\notes.txt',
+        "copy .\\aegis_file_test\\notes.txt to .\\aegis_file_test\\backup.txt",
+        "move .\\aegis_file_test\\backup.txt to .\\aegis_file_test\\moved.txt",
+        "rename .\\aegis_file_test\\moved.txt to .\\aegis_file_test\\renamed.txt",
 
-        # Calculator
+        "open calculator",
+
         "calculate 25 * 4",
         "what is 100 + 50",
-        "how much is 25 times 40",
-        "solve 100 + 200",
 
-        # Search
         "search Python tutorials",
         "look up autonomous drones",
-        "can you search for AI news",
 
-        # Chat
         "Hello AEGIS"
     ]
 
