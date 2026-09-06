@@ -112,6 +112,101 @@ class CommandRouter:
             }
 
         # ==========================================
+        # FILE SYSTEM
+        # ==========================================
+
+        # Specific path requests must be checked before
+        # the generic "list files" requests.
+
+        file_path_triggers = [
+            "list files in ",
+            "show files in ",
+            "show me the files in ",
+            "list folders in ",
+            "show folders in ",
+            "show me the folders in ",
+            "inspect directory ",
+            "inspect folder ",
+            "show directory ",
+            "show folder "
+        ]
+
+        for trigger in file_path_triggers:
+
+            if text.startswith(trigger):
+
+                path = message[len(trigger):].strip()
+
+                if path.startswith("in "):
+                    path = path[3:].strip()
+
+                if not path:
+                    path = "home"
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": path
+                }
+
+        # Generic file/folder requests
+
+        home_file_commands = {
+            "list files",
+            "show files",
+            "show me the files",
+            "list folders",
+            "show folders",
+            "show me the folders"
+        }
+
+        if text in home_file_commands:
+
+            return {
+                "type": "tool",
+                "action": "files",
+                "data": "home"
+            }
+
+        # Natural file-system requests
+
+        natural_file_requests = [
+            "can you list files",
+            "could you list files",
+            "please list files",
+            "can you show files",
+            "could you show files",
+            "please show files",
+            "can you show me the files",
+            "could you show me the files",
+            "please show me the files",
+            "can you list folders",
+            "could you list folders",
+            "please list folders",
+            "can you show folders",
+            "could you show folders",
+            "please show folders"
+        ]
+
+        for trigger in natural_file_requests:
+
+            if text.startswith(trigger):
+
+                path = message[len(trigger):].strip()
+
+                if path.startswith("in "):
+                    path = path[3:].strip()
+
+                if not path:
+                    path = "home"
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": path
+                }
+
+        # ==========================================
         # AUTOMATION
         # ==========================================
 
@@ -311,6 +406,13 @@ if __name__ == "__main__":
         "computer information",
         "what processor do i have",
         "tell me about my computer",
+
+        # File system
+        "list files",
+        "list files in home",
+        "show me the files in documents",
+        "inspect folder desktop",
+        "list folders in downloads",
 
         # Automation
         "open calculator",
