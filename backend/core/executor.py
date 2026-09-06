@@ -4,17 +4,48 @@ from backend.tools.tool_manager import ToolManager
 
 class CommandExecutor:
 
-    def __init__(self, memory_service):
+    def __init__(
+        self,
+        memory_service
+    ):
 
-        self.automation = AutomationManager()
+        self.automation = (
+            AutomationManager()
+        )
+
         self.tools = ToolManager()
+
         self.memory = memory_service
 
-    def execute(self, command):
+    # ==========================================
+    # EXECUTE
+    # ==========================================
 
-        command_type = command.get("type")
-        action = command.get("action")
-        data = command.get("data")
+    def execute(
+        self,
+        command
+    ):
+
+        if not isinstance(
+            command,
+            dict
+        ):
+
+            return (
+                "I received an invalid command."
+            )
+
+        command_type = command.get(
+            "type"
+        )
+
+        action = command.get(
+            "action"
+        )
+
+        data = command.get(
+            "data"
+        )
 
         # ==========================================
         # MEMORY
@@ -25,6 +56,7 @@ class CommandExecutor:
             if action == "remember":
 
                 if not data:
+
                     return (
                         "What would you like me "
                         "to remember?"
@@ -35,6 +67,7 @@ class CommandExecutor:
                 )
 
                 if saved:
+
                     return (
                         f"I'll remember that: "
                         f"{data}"
@@ -47,9 +80,12 @@ class CommandExecutor:
 
             if action == "recall":
 
-                memories = self.memory.get_all()
+                memories = (
+                    self.memory.get_all()
+                )
 
                 if not memories:
+
                     return (
                         "I don't have any "
                         "saved memories yet."
@@ -63,13 +99,16 @@ class CommandExecutor:
             if action == "forget":
 
                 if not data:
+
                     return (
                         "What would you like "
                         "me to forget?"
                     )
 
-                deleted = self.memory.forget(
-                    data
+                deleted = (
+                    self.memory.forget(
+                        data
+                    )
                 )
 
                 if deleted:
@@ -85,13 +124,20 @@ class CommandExecutor:
                     f"matching '{data}'."
                 )
 
+            return (
+                f"I don't know how to perform "
+                f"the memory action '{action}'."
+            )
+
         # ==========================================
         # TOOL DISCOVERY
         # ==========================================
 
         if command_type == "tool_discovery":
 
-            return self.tools.describe_tools()
+            return (
+                self.tools.describe_tools()
+            )
 
         # ==========================================
         # AUTOMATION
@@ -99,17 +145,23 @@ class CommandExecutor:
 
         if command_type == "automation":
 
-            if action == "open":
+            if action != "open":
 
-                if not data:
-                    return (
-                        "What would you like "
-                        "me to open?"
-                    )
-
-                return self.automation.open(
-                    data
+                return (
+                    "I don't know how to perform "
+                    f"the automation action '{action}'."
                 )
+
+            if not data:
+
+                return (
+                    "What would you like "
+                    "me to open?"
+                )
+
+            return self.automation.open(
+                data
+            )
 
         # ==========================================
         # TOOLS
@@ -118,6 +170,7 @@ class CommandExecutor:
         if command_type == "tool":
 
             if not action:
+
                 return (
                     "Which tool should I use?"
                 )
@@ -126,6 +179,14 @@ class CommandExecutor:
                 action,
                 data
             )
+
+        # ==========================================
+        # CHAT
+        # ==========================================
+
+        if command_type == "chat":
+
+            return data
 
         # ==========================================
         # UNKNOWN COMMAND
@@ -172,6 +233,12 @@ if __name__ == "__main__":
         },
 
         {
+            "type": "automation",
+            "action": "open",
+            "data": "calculator"
+        },
+
+        {
             "type": "tool",
             "action": "unknown",
             "data": "test"
@@ -182,7 +249,9 @@ if __name__ == "__main__":
     for test in tests:
 
         print(test)
+
         print(
             executor.execute(test)
         )
+
         print()
