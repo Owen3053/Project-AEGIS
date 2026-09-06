@@ -88,8 +88,6 @@ class CommandRouter:
                 "data": None
             }
 
-        # Natural system information requests
-
         natural_system_info = [
             "what processor do i have",
             "what cpu do i have",
@@ -115,8 +113,63 @@ class CommandRouter:
         # FILE SYSTEM
         # ==========================================
 
-        # Specific path requests must be checked before
-        # the generic "list files" requests.
+        # READ FILE
+        # Specific read commands must be checked before
+        # generic listing commands.
+
+        file_read_triggers = [
+            "read file ",
+            "read the file ",
+            "show contents of ",
+            "show the contents of ",
+            "show me the contents of ",
+            "read contents of ",
+            "read the contents of ",
+            "open text file ",
+            "inspect file ",
+            "inspect the file "
+        ]
+
+        for trigger in file_read_triggers:
+
+            if text.startswith(trigger):
+
+                path = message[len(trigger):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "read",
+                        "path": path
+                    }
+                }
+
+        natural_file_read_requests = [
+            "can you read ",
+            "could you read ",
+            "please read ",
+            "can you show me the contents of ",
+            "could you show me the contents of ",
+            "please show me the contents of "
+        ]
+
+        for trigger in natural_file_read_requests:
+
+            if text.startswith(trigger):
+
+                path = message[len(trigger):].strip()
+
+                return {
+                    "type": "tool",
+                    "action": "files",
+                    "data": {
+                        "operation": "read",
+                        "path": path
+                    }
+                }
+
+        # LIST DIRECTORY WITH PATH
 
         file_path_triggers = [
             "list files in ",
@@ -149,7 +202,7 @@ class CommandRouter:
                     "data": path
                 }
 
-        # Generic file/folder requests
+        # GENERIC FILE LISTING
 
         home_file_commands = {
             "list files",
@@ -167,8 +220,6 @@ class CommandRouter:
                 "action": "files",
                 "data": "home"
             }
-
-        # Natural file-system requests
 
         natural_file_requests = [
             "can you list files",
@@ -247,8 +298,6 @@ class CommandRouter:
                         "data": target
                     }
 
-        # Natural-language open requests
-
         natural_open = [
             "can you open ",
             "could you open ",
@@ -299,8 +348,6 @@ class CommandRouter:
                     "data": expression
                 }
 
-        # Natural calculator requests
-
         natural_calculator = [
             "how much is ",
             "how many is ",
@@ -349,8 +396,6 @@ class CommandRouter:
                     "action": "search",
                     "data": query
                 }
-
-        # Natural search requests
 
         natural_search = [
             "can you search for ",
@@ -407,12 +452,17 @@ if __name__ == "__main__":
         "what processor do i have",
         "tell me about my computer",
 
-        # File system
+        # File system - list
         "list files",
         "list files in home",
         "show me the files in documents",
         "inspect folder desktop",
         "list folders in downloads",
+
+        # File system - read
+        "read file test.txt",
+        "show contents of notes.txt",
+        "inspect file config.json",
 
         # Automation
         "open calculator",

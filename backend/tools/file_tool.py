@@ -8,9 +8,11 @@ class FileTool(BaseTool):
     name = "files"
 
     description = (
-        "List files and folders, check paths, "
-        "and inspect directories on the computer"
+        "List files and folders, check paths, inspect directories, "
+        "and safely read text files on the computer"
     )
+
+    MAX_READ_SIZE = 1 * 1024 * 1024
 
     HOME_ALIASES = {
         "home",
@@ -82,10 +84,6 @@ class FileTool(BaseTool):
             "USERPROFILE",
             "Favorites"
         ),
-        "onedrive": (
-            "OneDrive",
-            ""
-        ),
     }
 
     ENVIRONMENT_HOME_ALIASES = {
@@ -94,7 +92,72 @@ class FileTool(BaseTool):
         "$userprofile",
     }
 
+    TEXT_EXTENSIONS = {
+        ".txt",
+        ".md",
+        ".markdown",
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".xml",
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".sass",
+        ".csv",
+        ".log",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".toml",
+        ".sql",
+        ".sh",
+        ".bat",
+        ".cmd",
+        ".ps1",
+        ".env",
+    }
+
     def execute(self, data):
+
+        operation = "list"
+        target = data
+
+        if isinstance(data, dict):
+
+            operation = str(
+                data.get("operation", "list")
+            ).strip().lower()
+
+            target = data.get("path")
+
+        if operation == "list":
+            return self._list_directory(target)
+
+        if operation == "read":
+            return self._read_file(target)
+
+        return {
+            "success": False,
+            "tool": self.name,
+            "data": None,
+            "error": (
+                f"Unsupported file operation: "
+                f"{operation}"
+            )
+        }
+
+    # ==========================================
+    # LIST DIRECTORY
+    # ==========================================
+
+    def _list_directory(self, data):
 
         path = self._resolve_path(data)
 
@@ -147,6 +210,7 @@ class FileTool(BaseTool):
                 "success": True,
                 "tool": self.name,
                 "data": {
+                    "operation": "list",
                     "path": path,
                     "folders": folders,
                     "files": files,
@@ -183,6 +247,115 @@ class FileTool(BaseTool):
                 "error": str(error)
             }
 
+    # ==========================================
+    # READ FILE
+    # ==========================================
+
+    def _read_file(self, data):
+
+        path = self._resolve_file_path(data)
+
+        if not os.path.exists(path):
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": f"File does not exist: {path}"
+            }
+
+        if not os.path.isfile(path):
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": f"Path is not a file: {path}"
+            }
+
+        extension = os.path.splitext(path)[1].lower()
+
+        if extension not in self.TEXT_EXTENSIONS:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": (
+                    f"Refusing to read unsupported file type: "
+                    f"{extension or '[no extension]'}"
+                )
+            }
+
+        try:
+
+            file_size = os.path.getsize(path)
+
+            if file_size > self.MAX_READ_SIZE:
+
+                return {
+                    "success": False,
+                    "tool": self.name,
+                    "data": None,
+                    "error": (
+                        f"File is too large to read safely. "
+                        f"Maximum size is "
+                        f"{self.MAX_READ_SIZE // 1024 // 1024} MB."
+                    )
+                }
+
+            with open(
+                path,
+                "r",
+                encoding="utf-8",
+                errors="replace"
+            ) as file:
+
+                content = file.read()
+
+            return {
+                "success": True,
+                "tool": self.name,
+                "data": {
+                    "operation": "read",
+                    "path": path,
+                    "size": file_size,
+                    "content": content
+                },
+                "error": None
+            }
+
+        except PermissionError:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": "Permission denied."
+            }
+
+        except OSError as error:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": str(error)
+            }
+
+        except Exception as error:
+
+            return {
+                "success": False,
+                "tool": self.name,
+                "data": None,
+                "error": str(error)
+            }
+
+    # ==========================================
+    # PATH RESOLUTION
+    # ==========================================
+
     def _resolve_path(self, data):
 
         home = os.path.expanduser("~")
@@ -205,7 +378,7 @@ class FileTool(BaseTool):
             return home
 
         # ==========================================
-        # WINDOWS KNOWN FOLDER ALIASES
+        # WINDOWS KNOWN FOLDERS
         # ==========================================
 
         if os.name == "nt" and normalized in {
@@ -263,7 +436,7 @@ class FileTool(BaseTool):
         requested = os.path.expanduser(requested)
 
         # ==========================================
-        # PREVENT COMMON LINUX HOME PATHS
+        # COMMON LINUX HOME PATHS
         # ==========================================
 
         if requested in {
@@ -272,10 +445,6 @@ class FileTool(BaseTool):
             "/home/user",
         }:
             return home
-
-        # ==========================================
-        # HANDLE COMMON USER FOLDER NAMES
-        # ==========================================
 
         normalized_expanded = requested.lower().strip()
 
@@ -290,17 +459,50 @@ class FileTool(BaseTool):
                 folder_name
             )
 
-        # ==========================================
-        # RETURN EXPLICIT PATH
-        # ==========================================
-
         return requested
+
+    def _resolve_file_path(self, data):
+
+        if not data:
+            return ""
+
+        requested = str(data).strip()
+
+        if not requested:
+            return ""
+
+        expanded = os.path.expandvars(
+            os.path.expanduser(requested)
+        )
+
+        # Explicit paths should be preserved.
+        if os.path.isabs(expanded):
+
+            return expanded
+
+        # A bare filename is searched from the current
+        # working directory.
+        if (
+            os.path.dirname(expanded)
+            and expanded.lower() not in self.FOLDER_ALIASES
+        ):
+            return expanded
+
+        normalized = expanded.lower()
+
+        if normalized in self.HOME_ALIASES:
+
+            return self._resolve_path(expanded)
+
+        if normalized in self.FOLDER_ALIASES:
+
+            return self._resolve_path(expanded)
+
+        return expanded
 
     def _resolve_windows_known_folder(self, requested):
 
         home = os.path.expanduser("~")
-
-        canonical_name = requested
 
         aliases = {
             "my desktop": "desktop",
@@ -318,12 +520,14 @@ class FileTool(BaseTool):
         }
 
         canonical_name = aliases.get(
-            canonical_name,
-            canonical_name
+            requested,
+            requested
         )
 
-        # OneDrive is commonly exposed through an
-        # environment variable on Windows.
+        # ==========================================
+        # ONEDRIVE
+        # ==========================================
+
         if canonical_name == "onedrive":
 
             onedrive = os.environ.get(
@@ -337,6 +541,10 @@ class FileTool(BaseTool):
                 home,
                 "OneDrive"
             )
+
+        # ==========================================
+        # KNOWN FOLDER
+        # ==========================================
 
         environment_name, default_folder = (
             self.WINDOWS_KNOWN_FOLDERS[
@@ -355,9 +563,13 @@ class FileTool(BaseTool):
         )
 
         if os.path.isdir(standard_path):
+
             return standard_path
 
-        # Common OneDrive redirections.
+        # ==========================================
+        # ONEDRIVE REDIRECTION
+        # ==========================================
+
         onedrive = os.environ.get(
             "OneDrive"
         )
@@ -370,6 +582,7 @@ class FileTool(BaseTool):
             )
 
             if os.path.isdir(onedrive_path):
+
                 return onedrive_path
 
         return standard_path
@@ -382,24 +595,16 @@ if __name__ == "__main__":
     tests = [
         None,
         "home",
-        "my home",
-        "home directory",
-        "my home directory",
-        "~",
-        "%USERPROFILE%",
-        "desktop",
         "documents",
         "downloads",
-        "pictures",
-        "music",
-        "videos",
+        "desktop",
         "onedrive",
     ]
 
     for test in tests:
 
         print(
-            f"\nInput: {test}"
+            f"\nLIST INPUT: {test}"
         )
 
         print(
